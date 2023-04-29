@@ -8,6 +8,7 @@ from tqdm import tqdm
 from PIL import Image
 import torch
 import os
+import plotly.express as px
 
 # %%
 
@@ -54,6 +55,10 @@ else:
     dataset = torch.load('dataset.pt')
 
 
+# Load images from ./faces
+# TODO
+
+
 # %%
 # Create train and test sets
 
@@ -85,7 +90,11 @@ def mean_loss(model, dataloader):
 # Initialize model
 
 trm_model = torch.nn.Linear(512, 1)
-optim = torch.optim.Adam(trm_model.parameters(), lr=0.01)
+optim = torch.optim.AdamW(
+    trm_model.parameters(),
+    lr=0.01,
+    weight_decay=0.1
+)
 
 # %%
 # Train model
@@ -108,54 +117,42 @@ for epoch in range(epochs):
     pbar.set_description(f"test_loss: {test_loss:.4f} train_loss {train_loss:.4f}")
     pbar.update(1)
 
+pbar.close()
+
+# %%
+# Save model
+
+torch.save(trm_model.state_dict(), "model.pt")
 
 # %%
 
-trm_model = torch.nn.Linear(512, 1)
-optim = torch.optim.Adam(trm_model.parameters(), lr=0.1)
+faces = [Image.open(requests.get(url, stream=True).raw) for url in tqdm(data.keys())]
+
+# %%
+# Visualize images with their predictions and true ratings
+
+from IPython.display import display
+
+def visualize(start: int, end: int):
+    for face, (image_features, rating) in list(zip(faces, dataset))[start:end]:
+        # inputs = processor(images=face, return_tensors="pt", padding=True)
+        # image_features = model.get_image_features(**inputs)
+        prediction = trm_model(image_features)
+        display(face)
+        print(f"prediction: {prediction.item():.2f} true: {rating.item()}")
+
+
+visualize(0, 10)
 
 # %%
 
-image_features, rating = next(iter(dataloader))
-rating = rating.to(torch.float32)
 
-prediction = trm_model(image_features)
-print(f'rating: {rating} prediction: {prediction}')
-
-
-loss = ((prediction - rating.unsqueeze(1))**2).mean()
-print(loss)
-loss.backward()
-optim.step()
+sorted(list(data.values())[1])
 
 # %%
 
+url = list(data.keys())[0]
+print(url)
+Image.open(requests.get(url, stream=True).raw)
 
 
-# %%
-
-for i, (image_features, rating) in enumerate(dataloader):
-    # check for nan
-    if torch.isnan(image_features).any():
-        print(f'NAN IMAGE {i}')
-    if torch.isnan(rating).any():
-        print(f'NAN RATING {i}')
-
-
-# %%
-
-trm_model.weight
-
-# %%
-
-prediction.shape, rating.unsqueeze(1).shape
-
-# %%
-
-trm_model.weight
-
-
-# %%
-
-for p in model.parameters():
-    p.requires_grad = False
