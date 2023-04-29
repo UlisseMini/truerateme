@@ -27,12 +27,5 @@ def rateme(input_img):
     return f'you are a {rating:.1f}'
 
 
-# %%
-# Test it
-
-# rateme(np.random.rand(3, 224, 224))
-# shape is arbitrary
-# %%
-
-demo = gr.Interface(rateme, gr.Image(), "text")
+demo = gr.Interface(rateme, gr.Image(source="webcam", stream=True), "text")
 demo.launch()
